@@ -52,6 +52,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
                 PropertyPaneChoiceGroup('showDates', {
                   label: 'Vis hvilke datoer?',
                   options: [
+                    { key: ShowDates.Auto, text: 'Automatisk' },
                     { key: ShowDates.Created, text: 'Publisert' },
                     { key: ShowDates.Modified, text: 'Oppdatert' },
                     { key: ShowDates.Both, text: 'Publisert og oppdatert' },
