@@ -36,18 +36,21 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
   public render(): React.ReactElement<IPubliseringsdatoProps> {
     const {published, modified, isDraft, isListItem} = this.state;
     const {showDates, manualCreatedDate, manualModifiedDate, prefixModifiedDate} = this.props;
-    const createdDate: Date  = manualCreatedDate && manualCreatedDate.value 
+
+    const dateOptions = {year: "numeric", month: "long", day: "numeric"} as Intl.DateTimeFormatOptions;
+    const locale = Intl.DateTimeFormat.supportedLocalesOf(["nb-NO", "nn-NO", "no", "da-DK", "en-US"]);
+
+    const createdDate: Date  = manualCreatedDate && manualCreatedDate.value
       ? new Date(manualCreatedDate.value as unknown as React.ReactText)
       : published ? published : null;
     const modifiedDate: Date = manualModifiedDate && manualModifiedDate.value
       ? new Date(manualModifiedDate.value as unknown as React.ReactText)
       : modified ? modified : null;
-    const dateOptions = {year: 'numeric', month: 'long', day: 'numeric'};
     const showModifiedDate = showDates === ShowDates.Modified || showDates === ShowDates.Both
       || (showDates === ShowDates.Auto && (isDraft || modifiedDate && createdDate && (
         Math.abs(createdDate.getTime() - modifiedDate.getTime()) > 1000 * 60 * 5
       )));
-    const showCreatedDate = showDates === ShowDates.Created || showDates === ShowDates.Both 
+    const showCreatedDate = showDates === ShowDates.Created || showDates === ShowDates.Both
       || (showDates === ShowDates.Auto && !isDraft && modifiedDate && createdDate && (
         createdDate > this._nDaysAgo(30) || !showModifiedDate
       ));
@@ -65,7 +68,7 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
             {createdDate && <time
             data-automation-id={`CreatedDate`}
             dateTime={createdDate.toISOString()}>
-            {createdDate.toLocaleDateString(undefined, dateOptions)}
+            {createdDate.toLocaleDateString(locale, dateOptions)}
             {createdDate > this._nDaysAgo(1) && this._getTimeString(createdDate)}
             </time>}
           </span>
@@ -77,13 +80,13 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
             {modifiedDate && <time
               data-automation-id={`ModifiedDate`}
               dateTime={modifiedDate.toISOString()}>
-              {modifiedDate.toLocaleDateString(undefined, dateOptions)}
+              {modifiedDate.toLocaleDateString(locale, dateOptions)}
               {modifiedDate > this._nDaysAgo(1) && this._getTimeString(modifiedDate)}
             </time>}
           </span>
         }
         {showCreatedDate && showModifiedDate && <span>{`.`}</span> }
-        {isListItem === false && <span>Utkast opprettet {new Date().toLocaleDateString(undefined, dateOptions)}</span>}
+        {isListItem === false && <span>Utkast opprettet {new Date().toLocaleDateString(locale, dateOptions)}</span>}
       </Text>
     );
   }
@@ -111,9 +114,9 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
       const result = await this.props.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
       const meta: ISPageMeta = await result.json();
       this.setState({
-        published: meta.PublishStartDate 
+        published: meta.PublishStartDate
           ? new Date(meta.PublishStartDate)
-          : meta.FirstPublishedDate 
+          : meta.FirstPublishedDate
             ? new Date(meta.FirstPublishedDate)
             : new Date(meta.Created),
         modified: new Date(meta.Modified),
