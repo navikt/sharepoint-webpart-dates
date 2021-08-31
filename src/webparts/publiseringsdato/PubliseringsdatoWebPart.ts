@@ -11,6 +11,9 @@ import PubliseringsDato from './components/Publiseringsdato';
 import { IPubliseringsdatoProps, ShowDates, ModifiedPrefix } from './components/IPubliseringsdatoProps';
 import { PropertyFieldDateTimePicker, DateConvention } from '@pnp/spfx-property-controls/lib/PropertyFieldDateTimePicker';
 import { IDateTimeFieldValue } from "@pnp/spfx-property-controls/lib/PropertyFieldDateTimePicker";
+import { sp } from "@pnp/sp";
+import "@pnp/sp/webs";
+import "@pnp/sp/files/web";
 
 export interface IPubliseringsdatoWebPartProps {
   manualCreatedDate: IDateTimeFieldValue;
@@ -39,6 +42,10 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   }
 
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
+    sp.setup(this.context);
+    const pageRelativeUrl = this.context.pageContext.site.serverRequestPath;
+    const file = sp.web.getFileByServerRelativePath(pageRelativeUrl);
+
     return {
       pages: [
         {
@@ -64,23 +71,26 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
               groupName: 'Tilpasninger',
               groupFields: [
                 PropertyFieldDateTimePicker('manualCreatedDate', {
-                  label: 'Overstyr publiseringsdato',
+                  label: 'Rediger publiseringsdato og -klokkeslett',
                   initialDate: this.properties.manualCreatedDate,
-                  dateConvention: DateConvention.Date,
-                  onPropertyChange: this.onPropertyPaneFieldChanged,
+                  dateConvention: DateConvention.DateTime,
+                  onPropertyChange: async (propertyPath, oldValue, newValue) => {
+                    const fields = await file.expand('ListItemAllFields').get();
+                    if (fields['ListItemAllFields'] && fields['ListItemAllFields']["FirstPublishedDate"]) {
+                      const newDate: Date = newValue.value;
+                      const item = await file.getItem();
+                      await item.validateUpdateListItem([{
+                        FieldName: "FirstPublishedDate",
+                        FieldValue: `${newDate.toLocaleDateString()} ${newDate.toLocaleTimeString()}`
+                      }]);
+                    }
+                    this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
+                  },
                   properties: this.properties,
                   onGetErrorMessage: null,
                   deferredValidationTime: 0,
                   key: 'manualCreatedDate',
                   showLabels: false
-                }),
-                PropertyPaneButton('manualCreatedDate', {
-                  text: 'Fjern manuell dato',
-                  onClick: (value: any) => { 
-                    this.properties.manualCreatedDate = null;
-                    this.context.propertyPane.close();
-                    this.context.propertyPane.open();
-                  },
                 }),
                 PropertyFieldDateTimePicker('manualModifiedDate', {
                   label: 'Overstyr oppdatert-dato',
@@ -95,7 +105,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
                 }),
                 PropertyPaneButton('manualModifiedDate', {
                   text: 'Fjern manuell dato',
-                  onClick: (value: any) => { 
+                  onClick: (value: any) => {
                     this.properties.manualModifiedDate = null;
                     this.context.propertyPane.close();
                     this.context.propertyPane.open();
@@ -108,11 +118,23 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
                     { key: ModifiedPrefix.Revised, text: ModifiedPrefix.Revised },
                   ],
                 }),
-              ]
+              ],
             },
-          ]
-        }
-      ]
+            {
+              groupName: 'Ekstra verktøy',
+              groupFields: [
+                PropertyPaneButton('unpublish',{
+                  text: 'Avpubliser denne siden',
+                  onClick: async () => {
+                    await file.checkin();
+                    await file.unpublish('Avpublisert');
+                  },
+                }),
+              ],
+            },
+          ],
+        },
+      ],
     };
   }
 }
