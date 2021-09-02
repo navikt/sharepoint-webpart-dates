@@ -6,6 +6,23 @@ Short summary on functionality and used technologies.
 
 [picture of the solution in action, if possible]
 
+```
+import { sp } from "@pnp/sp";
+import "@pnp/sp/webs";
+import "@pnp/sp/files/web";
+
+const url = "https://navno.sharepoint.com/sites/site/SitePages/SitePage.aspx";
+
+(async () => {
+  const file = sp.web.getFileByUrl(url);
+  const item = await file.getItem();
+  await item.validateUpdateListItem([{
+    FieldName: "FirstPublishedDate",
+    FieldValue: "20.01.2021 12:00:00"
+  }]).then(console.log);
+})().catch(console.log)
+```
+
 ## Used SharePoint Framework Version
 
 ![version](https://img.shields.io/badge/version-1.11-green.svg)

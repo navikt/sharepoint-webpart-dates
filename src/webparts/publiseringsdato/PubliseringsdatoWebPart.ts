@@ -14,6 +14,7 @@ import { IDateTimeFieldValue } from "@pnp/spfx-property-controls/lib/PropertyFie
 import { sp } from "@pnp/sp";
 import "@pnp/sp/webs";
 import "@pnp/sp/files/web";
+import { IFile } from '@pnp/sp/files/types';
 
 export interface IPubliseringsdatoWebPartProps {
   manualCreatedDate: IDateTimeFieldValue;
@@ -22,7 +23,43 @@ export interface IPubliseringsdatoWebPartProps {
   showDates: ShowDates;
 }
 
+export interface ISitePageDates {
+  created: Date;
+  modified: Date;
+  firstPublished?: Date;
+}
+
 export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubliseringsdatoWebPartProps> {
+
+  protected file?: IFile;
+  protected dates?: ISitePageDates;
+  protected isNew = true;
+  protected unpublishButtonPressed = false;
+
+  public async onInit() {
+    await this._updateContext();
+    super.onInit();
+  }
+
+  public async onPropertyPaneConfigurationStart() {
+    await this._updateContext();
+    super.onPropertyPaneConfigurationStart();
+  }
+
+  private async _updateContext() {
+    sp.setup(this.context);
+    const pageRelativeUrl = window.location.pathname; // Can't use serverRequestPath from pageContext because of newpage bug (new context is not initialized)
+    try {
+      this.file = sp.web.getFileByServerRelativeUrl(pageRelativeUrl);
+      const allFields = await this.file.expand('ListItemAllFields').get();
+      this.isNew = allFields.MajorVersion === 0;
+      this.dates = {
+        created: new Date(allFields['ListItemAllFields']['Created']),
+        modified: new Date(allFields['ListItemAllFields']['Modified']),
+        firstPublished: allFields['ListItemAllFields']['FirstPublishedDate'] && new Date(allFields['ListItemAllFields']['FirstPublishedDate']),
+      };
+    } catch (_) {console.info(`Did not load fields from ${pageRelativeUrl}. Save the page and try again.`);}
+  }
 
   public render(): void {
 
@@ -41,10 +78,14 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
     ReactDom.unmountComponentAtNode(this.domElement);
   }
 
+  private _dateToDateField(date: Date): IDateTimeFieldValue {
+    if (date) return {
+      value: date,
+      displayValue: date.toLocaleString(),
+    };
+  }
+
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
-    sp.setup(this.context);
-    const pageRelativeUrl = this.context.pageContext.site.serverRequestPath;
-    const file = sp.web.getFileByServerRelativePath(pageRelativeUrl);
 
     return {
       pages: [
@@ -67,71 +108,78 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
                 }),
               ],
             },
-            {
-              groupName: 'Tilpasninger',
-              groupFields: [
-                PropertyFieldDateTimePicker('manualCreatedDate', {
-                  label: 'Rediger publiseringsdato og -klokkeslett',
-                  initialDate: this.properties.manualCreatedDate,
-                  dateConvention: DateConvention.DateTime,
-                  onPropertyChange: async (propertyPath, oldValue, newValue) => {
-                    const fields = await file.expand('ListItemAllFields').get();
-                    if (fields['ListItemAllFields'] && fields['ListItemAllFields']["FirstPublishedDate"]) {
+              {
+                groupName: `Tilpasninger${this.isNew && ' (publiser siden først!)'}`,
+                groupFields: [
+                  PropertyFieldDateTimePicker('manualCreatedDate', {
+                    label: 'Rediger publiseringsdato og -klokkeslett',
+                    disabled: this.isNew,
+                    initialDate: this.properties.manualCreatedDate
+                      || (this.dates && this._dateToDateField(this.dates.firstPublished))
+                      || (this.dates && this._dateToDateField(this.dates.created)),
+                    dateConvention: DateConvention.DateTime,
+                    onPropertyChange: async (propertyPath, oldValue, newValue) => {
                       const newDate: Date = newValue.value;
-                      const item = await file.getItem();
+                      const item = await this.file.getItem();
                       await item.validateUpdateListItem([{
                         FieldName: "FirstPublishedDate",
                         FieldValue: `${newDate.toLocaleDateString()} ${newDate.toLocaleTimeString()}`
                       }]);
-                    }
-                    this.onPropertyPaneFieldChanged(propertyPath, oldValue, newValue);
-                  },
-                  properties: this.properties,
-                  onGetErrorMessage: null,
-                  deferredValidationTime: 0,
-                  key: 'manualCreatedDate',
-                  showLabels: false
-                }),
-                PropertyFieldDateTimePicker('manualModifiedDate', {
-                  label: 'Overstyr oppdatert-dato',
-                  initialDate: this.properties.manualModifiedDate,
-                  dateConvention: DateConvention.Date,
-                  onPropertyChange: this.onPropertyPaneFieldChanged,
-                  properties: this.properties,
-                  onGetErrorMessage: null,
-                  deferredValidationTime: 0,
-                  key: 'manualModifiedDate',
-                  showLabels: false
-                }),
-                PropertyPaneButton('manualModifiedDate', {
-                  text: 'Fjern manuell dato',
-                  onClick: (value: any) => {
-                    this.properties.manualModifiedDate = null;
-                    this.context.propertyPane.close();
-                    this.context.propertyPane.open();
-                  },
-                }),
-                PropertyPaneChoiceGroup('prefixModifiedDate', {
-                  label: 'Prefiks foran oppdatert-dato',
-                  options: [
-                    { key: ModifiedPrefix.Updated, text: ModifiedPrefix.Updated },
-                    { key: ModifiedPrefix.Revised, text: ModifiedPrefix.Revised },
-                  ],
-                }),
-              ],
-            },
-            {
-              groupName: 'Ekstra verktøy',
-              groupFields: [
-                PropertyPaneButton('unpublish',{
-                  text: 'Avpubliser denne siden',
-                  onClick: async () => {
-                    await file.checkin();
-                    await file.unpublish('Avpublisert');
-                  },
-                }),
-              ],
-            },
+                      this.onPropertyPaneFieldChanged(propertyPath, oldValue, false);
+                    },
+                    properties: this.properties,
+                    onGetErrorMessage: null,
+                    deferredValidationTime: 0,
+                    key: 'manualCreatedDate',
+                    showLabels: false
+                  }),
+                  PropertyFieldDateTimePicker('manualModifiedDate', {
+                    label: 'Overstyr oppdatert-dato',
+                    disabled: this.isNew,
+                    initialDate: this.properties.manualModifiedDate,
+                    dateConvention: DateConvention.Date,
+                    onPropertyChange: this.onPropertyPaneFieldChanged,
+                    properties: this.properties,
+                    onGetErrorMessage: null,
+                    deferredValidationTime: 0,
+                    key: 'manualModifiedDate',
+                    showLabels: false
+                  }),
+                  PropertyPaneButton('manualModifiedDate', {
+                    text: `Bruk automatisk dato${this.dates && this.dates.modified && ` (${this.dates.modified.toLocaleDateString()})`}`,
+                    disabled: this.isNew,
+                    onClick: (value: any) => {
+                      this.properties.manualModifiedDate = null;
+                      this.context.propertyPane.close();
+                      this.context.propertyPane.open();
+                    },
+                  }),
+                  PropertyPaneChoiceGroup('prefixModifiedDate', {
+                    label: 'Prefiks foran oppdatert-dato',
+                    options: [
+                      { key: ModifiedPrefix.Updated, text: ModifiedPrefix.Updated, disabled: this.isNew },
+                      { key: ModifiedPrefix.Revised, text: ModifiedPrefix.Revised, disabled: this.isNew },
+                    ],
+                  }),
+                ],
+              },
+              {
+                groupName: 'Ekstra verktøy',
+                groupFields: [
+                  PropertyPaneButton('unpublish',{
+                    text: 'Lagre og avpubliser denne siden',
+                    disabled: this.isNew || this.unpublishButtonPressed,
+                    onClick: async () => {
+                      await this.file.checkin();
+                      await this.file.unpublish('Avpublisert');
+                      await this.file.checkout();
+                      this.unpublishButtonPressed = true;
+                      this.context.propertyPane.close();
+                      this.context.propertyPane.open();
+                    },
+                  }),
+                ],
+              },
           ],
         },
       ],
