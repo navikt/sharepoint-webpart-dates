@@ -1,6 +1,3 @@
-import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { IDateTimeFieldValue } from "@pnp/spfx-property-controls/lib/PropertyFieldDateTimePicker";
-
 export enum ShowDates {
   Auto = 'Auto',
   Created = 'Created',
@@ -14,9 +11,10 @@ export enum ModifiedPrefix {
 }
 
 export interface IPubliseringsdatoProps {
-  context: WebPartContext;
-  manualModifiedDate: IDateTimeFieldValue;
-  prefixModifiedDate: string;
-  manualCreatedDate: IDateTimeFieldValue;
   showDates: ShowDates;
+  prefixModifiedDate: string;
+  publishedDate?: Date;
+  modifiedDate: Date;
+  isDraft?: boolean;
+  version?: string;
 }

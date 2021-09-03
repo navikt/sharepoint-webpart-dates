@@ -34,7 +34,9 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   protected file?: IFile;
   protected dates?: ISitePageDates;
   protected isNew = true;
+  protected isDraft = true;
   protected unpublishButtonPressed = false;
+  protected version: string;
 
   public async onInit() {
     await this._updateContext();
@@ -53,24 +55,32 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
       this.file = sp.web.getFileByServerRelativeUrl(pageRelativeUrl);
       const allFields = await this.file.expand('ListItemAllFields').get();
       this.isNew = allFields.MajorVersion === 0;
+      this.isDraft = allFields.MinorVersion !== 0;
       this.dates = {
         created: new Date(allFields['ListItemAllFields']['Created']),
         modified: new Date(allFields['ListItemAllFields']['Modified']),
         firstPublished: allFields['ListItemAllFields']['FirstPublishedDate'] && new Date(allFields['ListItemAllFields']['FirstPublishedDate']),
       };
+      this.version = `${allFields.MajorVersion}.${allFields.MinorVersion}`;
     } catch (_) {console.info(`Did not load fields from ${pageRelativeUrl}. Save the page and try again.`);}
   }
 
   public render(): void {
-
+    const {manualCreatedDate, manualModifiedDate} = this.properties;
     const element: React.ReactElement<IPubliseringsdatoProps> = React.createElement(
       PubliseringsDato,
       {
-        context: this.context,
         ...this.properties,
+        publishedDate: manualCreatedDate && manualCreatedDate.value
+          ? new Date(manualCreatedDate.value as unknown as React.ReactText)
+          : this.dates ? this.dates.firstPublished || this.dates.created : undefined,
+        modifiedDate: manualModifiedDate && manualModifiedDate.value
+          ? new Date(manualModifiedDate.value as unknown as React.ReactText)
+          : this.dates ? this.dates.modified : new Date(),
+        isDraft: this.isDraft,
+        version: this.version,
       }
     );
-
     ReactDom.render(element, this.domElement);
   }
 
