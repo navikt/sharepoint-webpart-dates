@@ -34,7 +34,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   protected file?: IFile;
   protected dates?: ISitePageDates;
   protected isNew = true;
-  protected isDraft = true;
+  protected isDraft = false;
   protected unpublishButtonPressed = false;
   protected version: string;
 

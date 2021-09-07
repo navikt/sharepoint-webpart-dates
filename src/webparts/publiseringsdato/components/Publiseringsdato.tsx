@@ -9,7 +9,7 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
     this.state = {};
   }
 
-  public renderDate(prefix: string, date: Date, automationId: string) {
+  public renderDate(prefix: string, date: Date, automationId: string): React.ReactElement {
     const dateOptions = {year: "numeric", month: "long", day: "numeric"} as Intl.DateTimeFormatOptions;
     const locale = Intl.DateTimeFormat.supportedLocalesOf(["nb-NO", "nn-NO", "no", "da-DK", "en-US"]);
 
