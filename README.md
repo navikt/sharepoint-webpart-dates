@@ -12,14 +12,16 @@ import "@pnp/sp/webs";
 import "@pnp/sp/files/web";
 
 const url = "https://navno.sharepoint.com/sites/site/SitePages/SitePage.aspx";
+const dateString = "20.01.2021 12:00:00"
 
 (async () => {
   const file = sp.web.getFileByUrl(url);
   const item = await file.getItem();
   await item.validateUpdateListItem([{
     FieldName: "FirstPublishedDate",
-    FieldValue: "20.01.2021 12:00:00"
-  }]).then(console.log);
+    FieldValue: dateString,
+  }]).then(() => console.log("Dato endret!"));
+  await file.publish("Publiseringsdato oppdatert").then(()=>console.log("Ny versjon publisert."));
 })().catch(console.log)
 ```
 
