@@ -36,7 +36,6 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   protected isNew = true;
   protected isDraft = false;
   protected unpublishButtonPressed = false;
-  protected version: string;
 
   public async onInit() {
     await this._updateContext();
@@ -61,8 +60,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
         modified: new Date(allFields['ListItemAllFields']['Modified']),
         firstPublished: allFields['ListItemAllFields']['FirstPublishedDate'] && new Date(allFields['ListItemAllFields']['FirstPublishedDate']),
       };
-      this.version = `${allFields.MajorVersion}.${allFields.MinorVersion}`;
-    } catch (_) {console.info(`Did not load fields from ${pageRelativeUrl}. Save the page and try again.`);}
+    } catch {}
   }
 
   public render(): void {
@@ -76,9 +74,9 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
           : this.dates ? this.dates.firstPublished || this.dates.created : undefined,
         modifiedDate: manualModifiedDate && manualModifiedDate.value
           ? new Date(manualModifiedDate.value as unknown as React.ReactText)
-          : this.dates ? this.dates.modified : new Date(),
+          : this.dates ? this.dates.modified : undefined,
         isDraft: this.isDraft,
-        version: this.version,
+        displayMode: this.displayMode,
       }
     );
     ReactDom.render(element, this.domElement);
@@ -88,7 +86,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
     ReactDom.unmountComponentAtNode(this.domElement);
   }
 
-  private _dateToDateField(date: Date): IDateTimeFieldValue {
+  private _dateToDateField(date: Date): IDateTimeFieldValue | undefined {
     if (date) return {
       value: date,
       displayValue: date.toLocaleString(),
@@ -105,7 +103,6 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
           },
           groups: [
             {
-              // groupName: 'Vis hvilke datoer?',
               groupFields: [
                 PropertyPaneChoiceGroup('showDates', {
                   label: 'Vis hvilke datoer?',
@@ -147,7 +144,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
                     label: 'Overstyr oppdatert-dato',
                     disabled: this.isNew,
                     initialDate: this.properties.manualModifiedDate,
-                    dateConvention: DateConvention.Date,
+                    dateConvention: DateConvention.DateTime,
                     onPropertyChange: this.onPropertyPaneFieldChanged,
                     properties: this.properties,
                     onGetErrorMessage: null,

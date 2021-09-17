@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { IPubliseringsdatoProps, ShowDates } from './IPubliseringsdatoProps';
 import { Text } from 'office-ui-fabric-react/lib/Text';
+import { DisplayMode } from '@microsoft/sp-core-library';
 
 export default class PubliseringsDato extends React.Component<IPubliseringsdatoProps> {
 
@@ -14,15 +15,15 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
     const locale = Intl.DateTimeFormat.supportedLocalesOf(["nb-NO", "nn-NO", "no", "da-DK", "en-US"]);
 
     return (
-      <span>{prefix}
-        {` `}
+      <>
+        {`${prefix} `}
         {date && <time
           data-automation-id={automationId}
           dateTime={date.toISOString()}>
           {date.toLocaleDateString(locale, dateOptions)}
-          {date > this._nDaysAgo(1) && this._getTimeString(date)}
+          {this._dateIsLessThanDaysAgo(date, 1) && this._getTimeString(date)}
         </time>}
-      </span>
+      </>
     );
   }
 
@@ -33,17 +34,31 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
       modifiedDate,
       prefixModifiedDate,
       isDraft,
-      version,
+      displayMode,
     } = this.props;
 
-    const showModifiedDate = showDates === ShowDates.Modified || showDates === ShowDates.Both
-      || (showDates === ShowDates.Auto && (isDraft || publishedDate && (
-        Math.abs(publishedDate.getTime() - modifiedDate.getTime()) > 1000 * 60 * 5
-      )));
-    const showCreatedDate = publishedDate && showDates === ShowDates.Created || showDates === ShowDates.Both
-      || (showDates === ShowDates.Auto && !isDraft && publishedDate && (
-        publishedDate > this._nDaysAgo(30)
-      ));
+    /***
+     * Show created date if
+     * - web part property is set to only show created date or both modified and created
+     * - OR if property is set to Auto AND the page is not a draft and the publish date is less than 30 days ago.
+     */
+    const showCreatedDate = publishedDate && (showDates === ShowDates.Created || showDates === ShowDates.Both
+      || showDates === ShowDates.Auto && publishedDate && this._dateIsLessThanDaysAgo(publishedDate, 30));
+    /***
+     * Show modified date if
+     * - web part property is set to only show modified date or both modified and published
+     * - OR if property is set to Auto AND the page is a draft OR the page was only modified less than 10 minutes after it was published
+     */
+     const showModifiedDate = modifiedDate && (showDates === ShowDates.Modified || showDates === ShowDates.Both || showDates === ShowDates.Auto && (
+      !showCreatedDate ||
+      publishedDate && (
+        this._minutesBetweenDates(publishedDate, modifiedDate) > 10 && (
+          !this._datesAreOnSameDay(publishedDate, modifiedDate) ||
+          this._dateIsLessThanDaysAgo(publishedDate, 2)
+        )
+      )
+    ));
+
     return (
       <Text
         data-automation-id={`MetaDates`}
@@ -53,10 +68,11 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
         block
       >
         {showCreatedDate && this.renderDate('Publisert', publishedDate, 'CreatedDate')}
-        {showCreatedDate && showModifiedDate && <span>{`. `}</span> }
+        {showCreatedDate && showModifiedDate && `. ` }
         {showModifiedDate && this.renderDate(prefixModifiedDate, modifiedDate, 'ModifiedDate')}
-        {showCreatedDate && showModifiedDate && <span>{`. `}</span> }
-        {isDraft && ` (UTKAST${version ? `, v${version}` : ''})`}
+        {showCreatedDate && showModifiedDate && `. ` }
+        {!showCreatedDate && !showModifiedDate && displayMode == DisplayMode.Edit && 'Last inn siden på nytt for å vise publiseringsdato.'}
+        {isDraft && ` (UTKAST)`}
       </Text>
     );
   }
@@ -66,7 +82,18 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
     return ` kl. ${(`0${date.getHours()}`).slice(-2)}.${(`0${date.getMinutes()}`).slice(-2)}`;
   }
 
-  public _nDaysAgo(n: number): Date {
-    return new Date(new Date().getTime() - (n * 24 * 60 * 60 * 1000));
+  private _dateIsLessThanDaysAgo(date: Date, days: number): boolean {
+    return date > new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000));
   }
+
+  private _datesAreOnSameDay(first: Date, second: Date): boolean {
+    return first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate() ;
+  }
+
+  private _minutesBetweenDates(first: Date, second: Date): number {
+    return Math.abs(first.getTime() - second.getTime()) / (1000 * 60);
+  }
+
 }

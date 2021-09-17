@@ -1,3 +1,5 @@
+import { DisplayMode } from '@microsoft/sp-core-library';
+
 export enum ShowDates {
   Auto = 'Auto',
   Created = 'Created',
@@ -14,7 +16,7 @@ export interface IPubliseringsdatoProps {
   showDates: ShowDates;
   prefixModifiedDate: string;
   publishedDate?: Date;
-  modifiedDate: Date;
+  modifiedDate?: Date;
   isDraft?: boolean;
-  version?: string;
+  displayMode: DisplayMode;
 }
