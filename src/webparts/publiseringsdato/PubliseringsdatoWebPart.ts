@@ -43,13 +43,18 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   }
 
   public async onPropertyPaneConfigurationStart() {
-    await this._updateContext();
+    await this._updateContext(true);
     super.onPropertyPaneConfigurationStart();
   }
 
-  private async _updateContext() {
+  private async _updateContext(force = false) {
+    if (this.dates && force === false) return;
     sp.setup(this.context);
-    const pageRelativeUrl = window.location.pathname; // Can't use serverRequestPath from pageContext because of newpage bug (new context is not initialized)
+    const {pathname} = window.location;
+    const {serverRequestPath} = this.context.pageContext.site;
+    // Use pathname if it ends with .aspx, else use serverRequestPath (so that the web part both can be used on the home page of a site, and on new pages)
+    const needle = '.aspx';
+    const pageRelativeUrl = pathname.substring(pathname.length - needle.length, pathname.length) === needle ? pathname : serverRequestPath;
     try {
       this.file = sp.web.getFileByServerRelativeUrl(pageRelativeUrl);
       const allFields = await this.file.expand('ListItemAllFields').get();
@@ -63,7 +68,8 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
     } catch {}
   }
 
-  public render(): void {
+  public async render() {
+    await this._updateContext();
     const {manualCreatedDate, manualModifiedDate} = this.properties;
     const element: React.ReactElement<IPubliseringsdatoProps> = React.createElement(
       PubliseringsDato,
