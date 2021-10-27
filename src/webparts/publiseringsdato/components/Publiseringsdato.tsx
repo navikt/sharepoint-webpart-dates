@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { IPubliseringsdatoProps, ShowDates } from './IPubliseringsdatoProps';
-import { Text } from 'office-ui-fabric-react/lib/Text';
+import { Text } from '@fluentui/react';
 import { DisplayMode } from '@microsoft/sp-core-library';
 
 export default class PubliseringsDato extends React.Component<IPubliseringsdatoProps> {
