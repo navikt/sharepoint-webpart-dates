@@ -77,7 +77,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
         ...this.properties,
         publishedDate: manualCreatedDate && manualCreatedDate.value
           ? new Date(manualCreatedDate.value as unknown as React.ReactText)
-          : this.dates ? this.dates.firstPublished || this.dates.created : undefined,
+          : this.dates && !this.isNew ? this.dates.firstPublished || this.dates.created : undefined,
         modifiedDate: manualModifiedDate && manualModifiedDate.value
           ? new Date(manualModifiedDate.value as unknown as React.ReactText)
           : this.dates ? this.dates.modified : undefined,
