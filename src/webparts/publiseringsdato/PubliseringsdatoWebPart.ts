@@ -6,6 +6,11 @@ import {
   PropertyPaneChoiceGroup,
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import {
+  ThemeProvider,
+  ThemeChangedEventArgs,
+  IReadonlyTheme
+} from '@microsoft/sp-component-base';
 
 import PubliseringsDato from './components/Publiseringsdato';
 import { IPubliseringsdatoProps, ShowDates, ModifiedPrefix } from './components/IPubliseringsdatoProps';
@@ -36,8 +41,19 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
   protected isNew = true;
   protected isDraft = false;
   protected unpublishButtonPressed = false;
+  private _themeProvider: ThemeProvider;
+  private _themeVariant: IReadonlyTheme | undefined;
 
-  public async onInit() {
+  public async onInit(): Promise<void> {
+    // Consume the new ThemeProvider service
+    this._themeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
+
+    // If it exists, get the theme variant
+    this._themeVariant = this._themeProvider.tryGetTheme();
+
+    // Register a handler to be notified if the theme variant changes
+    this._themeProvider.themeChangedEvent.add(this, this._handleThemeChangedEvent);
+
     await this._updateContext();
     super.onInit();
   }
@@ -83,6 +99,7 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
           : this.dates ? this.dates.modified : undefined,
         isDraft: this.isDraft,
         displayMode: this.displayMode,
+        themeVariant: this._themeVariant,
       }
     );
     ReactDom.render(element, this.domElement);
@@ -198,4 +215,11 @@ export default class PubliseringsdatoWebPart extends BaseClientSideWebPart<IPubl
       ],
     };
   }
+
+  private _handleThemeChangedEvent(args: ThemeChangedEventArgs) {
+    this._themeVariant = args.theme;
+    this.render();
+  }
+
+
 }

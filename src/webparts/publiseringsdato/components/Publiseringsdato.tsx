@@ -59,11 +59,19 @@ export default class PubliseringsDato extends React.Component<IPubliseringsdatoP
       )
     ));
 
+    const { semanticColors } = this.props.themeVariant;
+
     return (
       <Text
         data-automation-id={`MetaDates`}
         variant={'small'}
-        style={{marginTop: -12, marginBottom: -24, padding: "1px 2px 0" }}
+        style={{
+          marginTop: -12,
+          marginBottom: -24,
+          padding: "1px 2px 0",
+          backgroundColor: semanticColors.bodyBackground,
+          color: semanticColors.bodyText,
+        }}
         nowrap
         block
       >

@@ -1,4 +1,5 @@
 import { DisplayMode } from '@microsoft/sp-core-library';
+import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
 export enum ShowDates {
   Auto = 'Auto',
@@ -19,4 +20,5 @@ export interface IPubliseringsdatoProps {
   modifiedDate?: Date;
   isDraft?: boolean;
   displayMode: DisplayMode;
+  themeVariant: IReadonlyTheme;
 }
