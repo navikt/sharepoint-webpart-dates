@@ -3,7 +3,7 @@
   "solution": {
     "name": "nav-publiseringsdato-client-side-solution",
     "id": "6bc18a88-68db-419d-9cd3-335e2d63f752",
-    "version": "1.0.0.0",
+    "version": "1.0.0.1",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
